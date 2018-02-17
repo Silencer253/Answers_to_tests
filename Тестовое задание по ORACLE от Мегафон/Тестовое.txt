@@ -1,0 +1,107 @@
+Тест 1
+1) Ключевое слово distinct не используется без select.
+
+2) count(distinct case when 305<=s  and s<459  then subs_id else null end) x459,
+Похоже имелось ввиду  306<=s.
+
+3) and x.rtpl_id not in [0,169]
+Должны быть круглые скобки, а не квадратные. 
+ 
+4) select name_r 'Имя', rtpl_id rtpl, 
+Алиас в одинарных кавычках писать нельзя. (Также сомнения насчет кириллицы в алиасе)
+
+5) case when nvl(c.subs_count,0)<>0 then amount_r/c.subs_count else 0 end "s",
+Не ясно откуда amount_r.
+ 
+6) Неправильно: group by name_r, rtpl_id rtpl
+	Правильно: group by name_r, rtpl
+--------------------------------------------------------------------------------------	
+	
+Тест 2
+Возможно ошибка в выборе столбца srt для сортировки данных. 
+--------------------------------------------------------------------------------------
+
+Тест 3
+Вариант №1
+--1. Находим нужный Job
+select djr.job, djr.sid, vs.serial#
+from dba_jobs_running djr
+left join v$session vs on vs.sid = djr.sid;
+
+--2. Убиваем найденный Job
+ALTER SYSTEM KILL SESSION '14552,569519' IMMEDIATE; -- sid=14552, serial=569519
+
+
+Вариант №2 (В случае если вариант №1 не сработал)
+--1. Проверяем работающие Job`ы (Отсюда мы получим SID работающего Job`а)
+SQL> SELECT * FROM DBA_JOBS_RUNNING;
+
+--2. Останавливаем работу Job`а
+BEGIN SYS.DBMS_IJOB.BROKEN(job#,TRUE); END;
+SQL> BEGIN SYS.DBMS_IJOB.BROKEN('136451',TRUE); END;
+
+--3. Убиваем сессию
+SQL> ALTER SYSTEM KILL SESSION 'sid,serial#';
+
+--4. Убиваем процесс в операционной системе по PID`у
+SELECT p.spid FROM v$session s, v$process p
+WHERE s.paddr = p.addr
+AND s.sid = :sid;
+--Для Windows, в DOS Prompt: orakill sid spid
+--Для UNIX в командной строке> kill '9 spid
+
+--5. Проверяем запущен ли интересующий нас Job до сих пор
+SQL> SELECT * FROM DBA_JOBS_RUNNING;
+
+--6. Определяем текущий номер job_queue_processes
+SQL> col value for a10
+SQL> select name,value from v$parameter where name = 'job_queue_processes';
+
+--7. Устанавливаем Queue Job'а в ноль
+SQL> ALTER SYSTEM SET job_queue_processes = 0;
+Это приведет к отключению всех процессов очереди заданий.
+
+--8. Убеждаемся, что никакие процессы не используют очередь заданий
+SQL> SELECT * FROM DBA_JOBS_RUNNING;
+
+--9. Отмечаем DBMS_JOB как Not Broken
+BEGIN SYS.DBMS_IJOB.BROKEN(job#,FALSE); END;
+
+--10. Устанавливаем job_queue_processes в оригинальное значение
+SQL> ALTER SYSTEM SET job_queue_processes = original_value;	
+--------------------------------------------------------------------------------------
+
+Тест 4
+Изменение метаданных таблицы может привести к потере данных, хранящихся в этой таблице, а также может повлиять на поведение базы данных, т.е. возникнут отклонения от обычного поведения, под которое делались настройки базы. 
+--------------------------------------------------------------------------------------
+
+Тест 5
+Результат: 2
+--------------------------------------------------------------------------------------
+
+Тест 6
+Запрос, ищущий клиентов с фамилией «Сидоров» и относящихся к региону «Башкирия»
+SELECT c.clnt_id
+FROM clients c
+LEFT JOIN branches b on c.brnc_brnc_id = b.brnc_id 
+WHERE c.name = "Сидоров" AND b.name = "Башкирия";
+--------------------------------------------------------------------------------------
+
+Тест 7
+Запрос выводит количество минут для вызовов, совершенных 10 мая 2006г., клиентами, выговорившими за этот день суммарно более 30 минут
+Вариант №1
+SELECT SUM(c.minuts) "Sum", c.clnt_clnt_id "ID"
+FROM calls c
+WHERE c.call_date BETWEEN 
+TO_DATE('10.05.2006 00:00:00', 'dd.mm.yyyy hh24:mi:ss') 
+AND TO_DATE('10.05.2006 23:59:59', 'dd.mm.yyyy hh24:mi:ss') 
+group by c.clnt_clnt_id
+HAVING SUM(c.minuts) > 30
+
+Вариант №2
+SELECT SUM(c.minuts) "Sum", c.clnt_clnt_id "ID"
+FROM calls c
+WHERE c.call_date 
+TO_DATE('10.05.2006', 'dd.mm.yyyy')  
+group by c.clnt_clnt_id
+HAVING SUM(c.minuts) > 30
