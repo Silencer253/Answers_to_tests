@@ -10,11 +10,11 @@ public:
 int main()
 {
 	/*...*/
-	std::vector<Student*>& st = students;
-	const std::vector
+	std::vector<Student*> students;
+	const std::vector<Student*>& st = students;
 	/*...*/
 	std::vector<Student*>::const_reverse_iterator i;
-	for (int i = st.rend(); i != st.rbegin(); ++i)
+	for (i = st.rend(); i != st.rbegin(); ++i)
 	{
 		(*i)->age = 20;
 	}
