@@ -2,10 +2,10 @@
 #include <vector>
 using namespace std;
 
-template<class T, template<class U, class = allocator<U> > clas Seq>
+template<class T, template<class U, class = allocator<U> > class Seq>
 void printSeq(Seq<T>& seq)
 {
-	for(Seq<T>::iterator b = seq.begin(); b != seq.end(); )
+	for(typename Seq<T>::iterator b = seq.begin(); b != seq.end(); )
 		cout << *b++ << endl;
 }
 
